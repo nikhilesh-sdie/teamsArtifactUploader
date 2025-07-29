@@ -24,7 +24,7 @@ inputs:
     required: true
   file_path:
     description: 'Path to the artifact file to be uploaded.'
-    required: true
+    required: false
 runs:
   using: "docker"
   image: "Dockerfile"
