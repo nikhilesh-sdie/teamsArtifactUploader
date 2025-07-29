@@ -17,7 +17,7 @@ chunk_size = 5 * 1024 * 1024  # 5 MB
 target_folder = "Android_APKs"
 
 # ==== AUTH ====
-print("APK name= ",file_name)
+print("APK name=",file_name)
 authority = f"https://login.microsoftonline.com/{tenant_id}"
 scopes = ["https://graph.microsoft.com/.default"]
 
