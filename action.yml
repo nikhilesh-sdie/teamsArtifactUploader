@@ -4,6 +4,9 @@ description: 'Upload CI/CD artifacts to a Microsoft Teams channel using the Grap
 author: 'nikhilesh-sdie'
 
 inputs:
+  name:
+    description: 'Artifact name'
+    required: false
   client_id:
     description: 'Azure AD client ID for authentication.'
     required: true
@@ -22,7 +25,6 @@ inputs:
   file_path:
     description: 'Path to the artifact file to be uploaded.'
     required: true
-
 runs:
   using: "docker"
   image: "Dockerfile"

@@ -12,7 +12,7 @@ client_secret = os.getenv("client_secret")
 team_id = os.getenv("team_id")
 channel_id = os.getenv("channel_id")
 file_path = os.getenv("file_path", "android/app/build/outputs/apk/production/release/app-production-release.apk")
-file_name = os.path.basename(file_path)
+file_name = os.getenv("name", os.path.basename(file_path))
 chunk_size = 5 * 1024 * 1024  # 5 MB
 target_folder = "Android_APKs"
 
@@ -32,13 +32,17 @@ if "access_token" not in result:
     raise Exception(f"Could not obtain token: {result.get('error_description')}")
 
 access_token = result["access_token"]
+print("Obtained access token")
 credential = ClientSecretCredential(tenant_id, client_id, client_secret)
 graph_client = GraphServiceClient(credentials=credential, scopes=scopes)
+print("Successfully Authenticated")
 
 async def upload_to_teams():
     # Step 1: Locate Teams Channel Folder
+    print("Getting drive id")
     folder = await graph_client.teams.by_team_id(team_id).channels.by_channel_id(channel_id).files_folder.get()
     drive_id = folder.parent_reference.drive_id
+    print("Getting folder id")
     folder_id = folder.id
 
     # Get target folder ID
@@ -53,6 +57,7 @@ async def upload_to_teams():
         raise Exception(f"Target folder '{target_folder}' not found in channel.")
 
     # Step 2: Create upload session
+    print("Creating upload session")
     upload_session_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{target_folder_id}:/{file_name}:/createUploadSession"
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -69,6 +74,7 @@ async def upload_to_teams():
     upload_url = upload_session_resp.json()["uploadUrl"]
 
     # Step 3: Upload in chunks
+    print("Uploading files in chuncks")
     file_size = os.path.getsize(file_path)
     with open(file_path, "rb") as f:
         bytes_uploaded = 0
@@ -79,6 +85,7 @@ async def upload_to_teams():
             end = bytes_uploaded + len(chunk) - 1
             content_range = f"bytes {start}-{end}/{file_size}"
 
+            print(f"[Chunk {chunk_num}] Uploading {content_range}")
             chunk_resp = requests.put(upload_url, headers={
                 "Content-Length": str(len(chunk)),
                 "Content-Range": content_range
