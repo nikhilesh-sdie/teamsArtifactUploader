@@ -1,0 +1,28 @@
+---
+name: 'Teams Artifact Uploader'
+description: 'Upload CI/CD artifacts to a Microsoft Teams channel using the Graph API and Python.'
+author: 'nikhilesh-sdie'
+
+inputs:
+  client_id:
+    description: 'Azure AD client ID for authentication.'
+    required: true
+  tenant_id:
+    description: 'Azure AD tenant ID for authentication.'
+    required: true
+  client_secret:
+    description: 'Azure AD client secret for authentication.'
+    required: true
+  team_id:
+    description: 'Microsoft Teams team ID where the target channel resides.'
+    required: true
+  channel_id:
+    description: 'Channel ID within the specified team to send the artifact.'
+    required: true
+  file_path:
+    description: 'Path to the artifact file to be uploaded.'
+    required: true
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
