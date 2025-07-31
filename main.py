@@ -102,10 +102,14 @@ async def upload_to_teams():
 
     web_url = chunk_resp.json().get("webUrl")
     if web_url:
-        print(f"File URL: {web_url}")
-        with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-            fh.write(f"Application={web_url}\n")
+        print(f"File URL: {web_url}")   
     else:
         raise Exception("Upload succeeded but no webUrl returned.")
+
+
+    github_env = os.getenv("GITHUB_ENV")
+    if github_env:
+        with open(github_env, "a") as f:
+            f.write(f"FILE_URL={web_url}\n")
 
 asyncio.run(upload_to_teams())
