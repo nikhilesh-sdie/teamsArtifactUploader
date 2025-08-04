@@ -14,7 +14,7 @@ channel_id = os.getenv("channel_id")
 file_path = os.getenv("file_path", "android/app/build/outputs/apk/production/release/app-production-release.apk")
 file_name = os.getenv("name", os.path.basename(file_path))
 chunk_size = 5 * 1024 * 1024  # 5 MB
-target_folder = "Android_APKs"
+target_folder = os.getenv("target_folder")
 
 # ==== AUTH ====
 print("APK name=",file_name)

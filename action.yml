@@ -22,6 +22,9 @@ inputs:
   channel_id:
     description: 'Channel ID within the specified team to send the artifact.'
     required: true
+  target_folder:
+    description: 'Folder within the specified team channel to store the artifact.'
+    required: true
   file_path:
     description: 'Path to the artifact file to be uploaded.'
     required: false
