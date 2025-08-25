@@ -1,9 +1,11 @@
 import os
 import asyncio
 import requests
+import aiohttp
 from msgraph import GraphServiceClient
 from msal import ConfidentialClientApplication
 from azure.identity.aio import ClientSecretCredential
+from datetime import datetime
 
 # ==== CONFIG ====
 client_id = os.getenv("client_id")
@@ -15,6 +17,11 @@ file_path = os.getenv("file_path", "android/app/build/outputs/apk/production/rel
 file_name = os.getenv("name", os.path.basename(file_path))
 chunk_size = 5 * 1024 * 1024  # 5 MB
 target_folder = os.getenv("target_folder")
+app_env = os.getenv("app_env", "staging")
+app_version_name = os.getenv("version_name")
+app_version_code = os.getenv("version_code")
+app_name = None
+action = os.getenv("usecase", "upload")
 
 # ==== AUTH ====
 print("APK name=",file_name)
@@ -112,4 +119,108 @@ async def upload_to_teams():
         with open(github_env, "a") as f:
             f.write(f"FILE_URL={web_url}\n")
 
-asyncio.run(upload_to_teams())
+async def download_apk():    
+
+    # Step 1: Locate Teams Channel Folder
+
+    target_folder = "Android_APKs"
+    folder = await graph_client.teams.by_team_id(team_id).channels.by_channel_id(channel_id).files_folder.get()
+    drive_id = folder.parent_reference.drive_id
+    folder_id = folder.id
+
+     # Get target folder ID
+    items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(folder_id).children.get()
+    target_folder_id = None
+    for item in items.value:
+        if item.name == target_folder and item.folder:
+           target_folder_id = item.id
+           break
+
+    if not target_folder_id:
+        raise Exception(f"Target folder '{target_folder}' not found in channel.")
+
+
+    child_items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(target_folder_id).children.get()
+    
+    if app_version_name and app_version_code:
+        app_name = f"android-{app_env}-{app_version_name}({app_version_code}).apk"
+        print(f"Looking for artifact: {app_name}")
+
+        item_id = None
+        for item in child_items.value:
+            if item.name == app_name:
+                item_id = item.id
+                print(f"✅ Found artifact: {app_name}")
+                break
+
+        if not item_id:
+            print("❌ Artifact not found, falling back to latest item")
+            latest_item = max(
+                child_items.value,
+                key=lambda item: datetime.fromisoformat(str(item.last_modified_date_time))
+            )
+            item_id = latest_item.id
+            print(f"➡️ Using latest artifact: {latest_item.name}")
+
+    else: 
+        print("Env variables missing, fetching latest artifact")
+        latest_item = max(
+            child_items.value,
+            key=lambda item: datetime.fromisoformat(str(item.last_modified_date_time))
+        )
+        item_id = latest_item.id
+        app_name = latest_item.name
+        print(f"➡️ Using latest artifact: {latest_item.name}")
+
+
+    #Step 2. Get the redirect CDN URL
+    graph_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/content"
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(graph_url, headers=headers, allow_redirects=False) as resp:
+            if resp.status == 302:
+                download_url = resp.headers["Location"]
+            else:
+                raise Exception(f"Unexpected response {resp.status}: {await resp.text()}")
+
+    # Step 3. Figure out total size of file
+    async with aiohttp.ClientSession() as session:
+        async with session.head(download_url) as resp:
+            total_size = int(resp.headers.get("Content-Length", 0))
+
+    # Step 4. Resume logic
+    start_byte = 0
+
+    print(f"Starting download at byte {start_byte} of {total_size} into {app_name}")
+
+    async with aiohttp.ClientSession() as session:
+        with open(app_name, "ab") as f:
+            while True:
+                end_byte = start_byte + chunk_size - 1
+                range_header = {"Range": f"bytes={start_byte}-{end_byte}"}
+                async with session.get(download_url, headers=range_header) as resp:
+                    if resp.status in (200, 206):  # 206 = Partial Content
+                        chunk = await resp.content.read()
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        start_byte += len(chunk)
+
+                        # Print progress
+                        percent = (start_byte / total_size) * 100 if total_size else 0
+                        print(f"Downloaded {start_byte}/{total_size} bytes ({percent:.2f}%)")
+
+                    elif resp.status == 416:
+                        # Requested range not satisfiable (EOF)
+                        break
+                    else:
+                        raise Exception(f"Download failed: {resp.status} {await resp.text()}")
+
+    print(f"✅ Download complete: {app_name}")
+
+if action == "upload":
+    asyncio.run(upload_to_teams())
+else:
+    asyncio.run(download_apk())
