@@ -142,7 +142,7 @@ async def download_apk():
 
     child_items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(target_folder_id).children.get()
     
-    if app_version_name and app_version_code:
+    if app_version_name is not None and app_version_code is not None:
         app_name = f"android-{app_env}-{app_version_name}({app_version_code}).apk"
         print(f"Looking for artifact: {app_name}")
 
