@@ -220,6 +220,11 @@ async def download_apk():
 
     print(f"✅ Download complete: {app_name}")
 
+    github_env = os.getenv("GITHUB_ENV")
+    if github_env:
+        with open(github_env, "a") as f:
+            f.write(f"APK_PATH={latest_item.name}\n")
+
 if action == "upload":
     asyncio.run(upload_to_teams())
 else:
