@@ -155,22 +155,30 @@ async def download_apk():
 
         if not item_id:
             print("❌ Artifact not found, falling back to latest item")
-            latest_item = max(
-                child_items.value,
-                key=lambda item: datetime.fromisoformat(str(item.last_modified_date_time))
-            )
-            item_id = latest_item.id
-            print(f"➡️ Using latest artifact: {latest_item.name}")
+            # latest_item = max(
+            #     child_items.value,
+            #     key=lambda item: datetime.fromisoformat(str(item.last_modified_date_time))
+            # )
+            # item_id = latest_item.id
+            # print(f"➡️ Using latest artifact: {latest_item.name}")
 
     else: 
         print("Env variables missing, fetching latest artifact")
+        env_filtered_items = [
+            item for item in child_items.value
+            if app_env in item.name
+        ]
+
+        if not env_filtered_items:
+            raise Exception(f"❌ No APKs found containing environment '{app_env}'")
+
         latest_item = max(
-            child_items.value,
+            env_filtered_items,
             key=lambda item: datetime.fromisoformat(str(item.last_modified_date_time))
         )
         item_id = latest_item.id
         app_name = latest_item.name
-        print(f"➡️ Using latest artifact: {latest_item.name}")
+        print(f"➡️ Using latest {app_env} artifact: {latest_item.name}")
 
 
     #Step 2. Get the redirect CDN URL
