@@ -233,7 +233,73 @@ async def download_apk():
         with open(github_env, "a") as f:
             f.write(f"APK_PATH={app_name}\n")
 
+async def delete_apk():
+    print("🔍 Locating Teams Channel Folder...")
+
+    # Step 1: Locate the Teams Channel Folder
+    folder = await graph_client.teams.by_team_id(team_id).channels.by_channel_id(channel_id).files_folder.get()
+    drive_id = folder.parent_reference.drive_id
+    folder_id = folder.id
+
+    # Step 2: Get target folder ID
+    items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(folder_id).children.get()
+    target_folder_id = None
+    for item in items.value:
+        if item.name == target_folder and item.folder:
+            target_folder_id = item.id
+            break
+
+    if not target_folder_id:
+        raise Exception(f"❌ Target folder '{target_folder}' not found in channel.")
+
+    # Step 3: List files in target folder
+    print(f"📂 Searching for APK to delete in '{target_folder}'...")
+    child_items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(target_folder_id).children.get()
+
+    if app_version_name and app_version_code:
+        app_name = f"android-{app_env}-{app_version_name}({app_version_code}).apk"
+        print(f"Looking for artifact to delete: {app_name}")
+    else:
+        print("App version info missing; will delete the latest APK for this environment.")
+        app_name = None
+
+    # Step 4: Identify item to delete
+    item_to_delete = None
+
+    if app_name:
+        for item in child_items.value:
+            if item.name == app_name:
+                item_to_delete = item
+                print(f"✅ Found exact match: {item.name}")
+                break
+    else:
+        env_filtered_items = [i for i in child_items.value if app_env in i.name]
+        if not env_filtered_items:
+            raise Exception(f"No files found for environment '{app_env}'.")
+        # Pick latest modified
+        item_to_delete = max(
+            env_filtered_items,
+            key=lambda i: datetime.fromisoformat(str(i.last_modified_date_time))
+        )
+        print(f"➡️ Deleting latest {app_env} APK: {item_to_delete.name}")
+
+    if not item_to_delete:
+        raise Exception("❌ APK not found to delete.")
+
+    # Step 5: Delete the item using Graph API
+    delete_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_to_delete.id}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    resp = requests.delete(delete_url, headers=headers)
+
+    if resp.status_code == 204:
+        print(f"✅ Successfully deleted: {item_to_delete.name}")
+    else:
+        raise Exception(f"❌ Delete failed ({resp.status_code}): {resp.text}")
+
 if action == "upload":
     asyncio.run(upload_to_teams())
+elif action == "delete":
+    asyncio.run(delete_apk()):
 else:
     asyncio.run(download_apk())
