@@ -300,6 +300,6 @@ async def delete_apk():
 if action == "upload":
     asyncio.run(upload_to_teams())
 elif action == "delete":
-    asyncio.run(delete_apk()):
+    asyncio.run(delete_apk())
 else:
     asyncio.run(download_apk())
