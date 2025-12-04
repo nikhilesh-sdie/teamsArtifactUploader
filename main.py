@@ -122,7 +122,7 @@ async def upload_to_teams():
 async def download_apk():    
 
     # Step 1: Locate Teams Channel Folder
-
+    app_name = os.getenv("app_name", None)
     target_folder = "Android_APKs"
     folder = await graph_client.teams.by_team_id(team_id).channels.by_channel_id(channel_id).files_folder.get()
     drive_id = folder.parent_reference.drive_id
