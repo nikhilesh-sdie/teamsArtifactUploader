@@ -20,7 +20,7 @@ target_folder = os.getenv("target_folder")
 app_env = os.getenv("app_env", "staging")
 app_version_name = os.getenv("version_name")
 app_version_code = os.getenv("version_code")
-app_name = None
+app_name = os.getenv("app_name", None)
 action = os.getenv("usecase", "upload")
 
 # ==== AUTH ====
