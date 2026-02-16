@@ -55,12 +55,18 @@ async def upload_to_teams():
 
     # Get target folder ID
     items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(folder_id).children.get()
-    target_folder_id = None
-    for item in items.value:
-        if item.name == target_folder and item.folder:
-            target_folder_id = item.id
-            break
+    sub_folder_id = next(
+        (item.id for item in items.value if item.name == "Deployment-Artifacts-Test" and item.folder),
+        None
+    )
+    if not sub_folder_id:
+        raise Exception("'Deployment-Artifacts-Test' folder not found in channel.")
 
+    sub_items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(sub_folder_id).children.get()
+    target_folder_id = next(
+        (sub_item.id for sub_item in sub_items.value if sub_item.name == target_folder and sub_item.folder),
+        None
+    )
     if not target_folder_id:
         raise Exception(f"Target folder '{target_folder}' not found in channel.")
 
@@ -130,12 +136,18 @@ async def download_apk():
 
      # Get target folder ID
     items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(folder_id).children.get()
-    target_folder_id = None
-    for item in items.value:
-        if item.name == target_folder and item.folder:
-           target_folder_id = item.id
-           break
+    sub_folder_id = next(
+        (item.id for item in items.value if item.name == "Deployment-Artifacts-Test" and item.folder),
+        None
+    )
+    if not sub_folder_id:
+        raise Exception("'Deployment-Artifacts-Test' folder not found in channel.")
 
+    sub_items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(sub_folder_id).children.get()
+    target_folder_id = next(
+        (sub_item.id for sub_item in sub_items.value if sub_item.name == target_folder and sub_item.folder),
+        None
+    )
     if not target_folder_id:
         raise Exception(f"Target folder '{target_folder}' not found in channel.")
 
@@ -256,14 +268,20 @@ async def delete_apk():
 
     # Step 2: Get target folder ID
     items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(folder_id).children.get()
-    target_folder_id = None
-    for item in items.value:
-        if item.name == target_folder and item.folder:
-            target_folder_id = item.id
-            break
+    sub_folder_id = next(
+        (item.id for item in items.value if item.name == "Deployment-Artifacts-Test" and item.folder),
+        None
+    )
+    if not sub_folder_id:
+        raise Exception("'Deployment-Artifacts-Test' folder not found in channel.")
 
+    sub_items = await graph_client.drives.by_drive_id(drive_id).items.by_drive_item_id(sub_folder_id).children.get()
+    target_folder_id = next(
+        (sub_item.id for sub_item in sub_items.value if sub_item.name == target_folder and sub_item.folder),
+        None
+    )
     if not target_folder_id:
-        raise Exception(f"❌ Target folder '{target_folder}' not found in channel.")
+        raise Exception(f"Target folder '{target_folder}' not found in channel.")
 
     # Step 3: List files in target folder
     print(f"📂 Searching for APK to delete in '{target_folder}'...")
